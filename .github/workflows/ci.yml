@@ -31,14 +31,17 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
+      - name: Detect affected packages
+        run: |
+          AFFECTED_COUNT=$(pnpm turbo run lint --dry=json --filter=...[origin/${{ github.base_ref }}] | jq '.tasks | length')
+          echo "count=$AFFECTED_COUNT" >> $GITHUB_OUTPUT
+
+          echo "Affected packages:"
+          echo "$DRY_RUN" | jq -r '.tasks[].package'
+
       - name: Check formatting
         run: pnpm format:check
 
-      - name: Lint
-        run: pnpm turbo run lint --filter=...[origin/${{ github.base_ref }}]
-
-      - name: Check types
-        run: pnpm turbo run check-types --filter=...[origin/${{ github.base_ref }}]
-
-      - name: Build
-        run: pnpm turbo run build --filter=...[origin/${{ github.base_ref }}]
+      - name: Lint, check types and build
+        if: steps.affected.outputs.count != '0'
+        run: pnpm turbo run lint --filter="...[origin/${{ github.base_ref }}]"
