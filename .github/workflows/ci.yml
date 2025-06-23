@@ -35,10 +35,10 @@ jobs:
         run: pnpm format:check
 
       - name: Lint
-        run: pnpm turbo run lint --filter=...[origin/main]
+        run: pnpm turbo run lint --filter=...[origin/${{ github.base_ref }}]
 
       - name: Check types
-        run: pnpm turbo run check-types --filter=...[origin/main]
+        run: pnpm turbo run check-types --filter=...[origin/${{ github.base_ref }}]
 
       - name: Build
-        run: pnpm turbo run build --filter=...[origin/main]
+        run: pnpm turbo run build --filter=...[origin/${{ github.base_ref }}]
