@@ -53,6 +53,20 @@ jobs:
           echo "Packages affected since last commit:"
           echo "$AFFECTED_PACKAGES" | jq '.packages.items'
 
+      - name: Packages affected using exact origin/main and origin/new
+        run: |
+          AFFECTED_PACKAGES=$(TURBO_SCM_BASE=origin/main TURBO_SCM_HEAD=origin/new pnpm turbo ls --affected --output=json)
+
+          echo "Packages affected:"
+          echo "$AFFECTED_PACKAGES" | jq '.packages.items'
+
+      - name: Packages affected using exact origin/main and origin/foo
+        run: |
+          AFFECTED_PACKAGES=$(TURBO_SCM_BASE=origin/main TURBO_SCM_HEAD=origin/foo pnpm turbo ls --affected --output=json)
+
+          echo "Packages affected:"
+          echo "$AFFECTED_PACKAGES" | jq '.packages.items'
+
       - name: Check formatting
         run: pnpm format:check
 
