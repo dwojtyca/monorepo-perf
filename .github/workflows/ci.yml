@@ -32,16 +32,22 @@ jobs:
         run: pnpm install
 
       - name: Detect affected packages
+        id: affected
         run: |
-          AFFECTED_COUNT=$(pnpm turbo run lint --dry=json --filter=...[origin/${{ github.base_ref }}] | jq '.tasks | length')
+          DRY_RUN=$(pnpm turbo run check-types --dry=json --affected)
+          AFFECTED_COUNT=$DRY_RUN | jq '.tasks | length'
+          AFFECTED_PACKAGES=$DRY_RUN | jq '.tasks[].package'
+
+          echo "$DRY_RUN"
+
           echo "count=$AFFECTED_COUNT" >> $GITHUB_OUTPUT
 
           echo "Affected packages:"
-          echo "$DRY_RUN" | jq -r '.tasks[].package'
+          echo "$AFFECTED_PACKAGES"
 
       - name: Check formatting
         run: pnpm format:check
 
       - name: Lint, check types and build
         if: steps.affected.outputs.count != '0'
-        run: pnpm turbo run lint --filter="...[origin/${{ github.base_ref }}]"
+        run: pnpm turbo run lint check-types build --affected
