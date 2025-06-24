@@ -22,6 +22,11 @@ jobs:
           filter: "blob:none"
           fetch-depth: 0
 
+      - name: Fetch remote branches
+        run: |
+          git fetch origin main:refs/remotes/origin/main
+          git fetch origin ${{ github.head_ref }}:refs/remotes/origin/${{ github.head_ref }}
+
       - uses: pnpm/action-setup@v3
         with:
           version: 8
@@ -38,7 +43,7 @@ jobs:
       - name: Detect affected packages
         id: affected
         run: |
-          AFFECTED_PACKAGES=$(pnpm turbo ls --affected --output=json)
+          AFFECTED_PACKAGES=$(pnpm turbo ls --base=origin/main --head=HEAD --affected --output=json)
           AFFECTED_COUNT=$AFFECTED_PACKAGES | jq '.packages.count'
 
           echo "count=$AFFECTED_COUNT" >> $GITHUB_OUTPUT
@@ -48,9 +53,23 @@ jobs:
 
       - name: Packages affected since last commit
         run: |
-          AFFECTED_PACKAGES=$(TURBO_SCM_BASE=HEAD^1 pnpm turbo ls --affected --output=json)
+          AFFECTED_PACKAGES=$(pnpm turbo ls --base=origin/main --head=HEAD --affected --output=json)
 
           echo "Packages affected since last commit:"
+          echo "$AFFECTED_PACKAGES" | jq '.packages.items'
+
+      - name: Packages affected using exact origin/main and origin/new
+        run: |
+          AFFECTED_PACKAGES=$(pnpm turbo ls --base=origin/main --head=HEAD --affected --output=json)
+
+          echo "Packages affected:"
+          echo "$AFFECTED_PACKAGES" | jq '.packages.items'
+
+      - name: Packages affected using exact origin/main and origin/foo
+        run: |
+          AFFECTED_PACKAGES=$(pnpm turbo ls --base=origin/main --head=HEAD --affected --output=json)
+
+          echo "Packages affected:"
           echo "$AFFECTED_PACKAGES" | jq '.packages.items'
 
       - name: Check formatting
