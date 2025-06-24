@@ -7,8 +7,7 @@ on:
     types: [opened, synchronize]
 
 env:
-  # TURBO_SCM_BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
-  TURBO_SCM_BASE: origin/main
+  TURBO_SCM_BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
 
 jobs:
   build:
@@ -45,6 +44,13 @@ jobs:
           echo "count=$AFFECTED_COUNT" >> $GITHUB_OUTPUT
 
           echo "Affected packages:"
+          echo "$AFFECTED_PACKAGES" | jq '.packages.items'
+
+      - name: Packages affected since last commit
+        run: |
+          AFFECTED_PACKAGES=$(TURBO_SCM_BASE=HEAD^1 pnpm turbo ls --affected --output=json)
+
+          echo "Packages affected since last commit:"
           echo "$AFFECTED_PACKAGES" | jq '.packages.items'
 
       - name: Check formatting
