@@ -22,10 +22,24 @@ jobs:
           filter: "blob:none"
           fetch-depth: 0
 
-      - name: Fetch remote branches
+      - name: Fetch origin/main
+        run: git fetch origin main:refs/remotes/origin/main
+
+      - name: Fetch origin/foo
+        run: git fetch origin foo:refs/remotes/origin/foo
+
+      - name: Fetch PR head (if available)
+        if: github.event_name == 'pull_request'
+        run: git fetch origin ${{ github.head_ref }}:refs/remotes/origin/${{ github.head_ref }}
+
+      - name: Test git diff
+        run: git diff origin/main...HEAD
+
+      - name: Debug Git refs
         run: |
-          git fetch origin main:refs/remotes/origin/main
-          git fetch origin ${{ github.head_ref }}:refs/remotes/origin/${{ github.head_ref }}
+          git branch -a
+          git log -1
+          git rev-parse origin/main || echo "origin/main missing"
 
       - uses: pnpm/action-setup@v3
         with:
@@ -43,31 +57,25 @@ jobs:
       - name: Detect affected packages
         id: affected
         run: |
-          AFFECTED_PACKAGES=$(pnpm turbo ls --base=origin/main --head=HEAD --affected --output=json)
-          AFFECTED_COUNT=$AFFECTED_PACKAGES | jq '.packages.count'
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE_REF="origin/main"
+            HEAD_REF="origin/${{ github.head_ref }}"
+          else
+            BASE_REF="${{ github.event.before }}"
+            HEAD_REF="HEAD"
+          fi
 
-          echo "count=$AFFECTED_COUNT" >> $GITHUB_OUTPUT
+          echo "Comparing $BASE_REF → $HEAD_REF"
 
-          echo "Affected packages:"
-          echo "$AFFECTED_PACKAGES" | jq '.packages.items'
+          AFFECTED_PACKAGES=$(TURBO_SCM_BASE=$BASE_REF TURBO_SCM_HEAD=$HEAD_REF pnpm turbo ls --output=json)
+          echo "$AFFECTED_PACKAGES" | tee affected.json
 
-      - name: Packages affected since last commit
-        run: |
-          AFFECTED_PACKAGES=$(pnpm turbo ls --base=origin/main --head=HEAD --affected --output=json)
-
-          echo "Packages affected since last commit:"
-          echo "$AFFECTED_PACKAGES" | jq '.packages.items'
-
-      - name: Packages affected using exact origin/main and origin/new
-        run: |
-          AFFECTED_PACKAGES=$(pnpm turbo ls --base=origin/main --head=HEAD --affected --output=json)
-
-          echo "Packages affected:"
-          echo "$AFFECTED_PACKAGES" | jq '.packages.items'
+          COUNT=$(echo "$AFFECTED_PACKAGES" | jq '.packages.items | length')
+          echo "count=$COUNT" >> $GITHUB_OUTPUT
 
       - name: Packages affected using exact origin/main and origin/foo
         run: |
-          AFFECTED_PACKAGES=$(pnpm turbo ls --base=origin/main --head=HEAD --affected --output=json)
+          AFFECTED_PACKAGES=$(TURBO_SCM_BASE=origin/main TURBO_SCM_HEAD=origin/foo pnpm turbo ls --affected --output=json)
 
           echo "Packages affected:"
           echo "$AFFECTED_PACKAGES" | jq '.packages.items'
