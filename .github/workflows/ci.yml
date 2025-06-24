@@ -6,6 +6,9 @@ on:
   pull_request:
     types: [opened, synchronize]
 
+env:
+  TURBO_SCM_BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+
 jobs:
   build:
     name: Install dependencies, check code quality and build
@@ -16,6 +19,7 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v4
         with:
+          filter: "blob:none"
           fetch-depth: 0
 
       - uses: pnpm/action-setup@v3
@@ -32,16 +36,19 @@ jobs:
         run: pnpm install
 
       - name: Detect affected packages
+        id: affected
         run: |
-          AFFECTED_COUNT=$(pnpm turbo run lint --dry=json --filter=...[origin/${{ github.base_ref }}] | jq '.tasks | length')
+          AFFECTED_PACKAGES=$(pnpm turbo ls --affected --output=json)
+          AFFECTED_COUNT=$AFFECTED_PACKAGES | jq '.packages.count'
+
           echo "count=$AFFECTED_COUNT" >> $GITHUB_OUTPUT
 
           echo "Affected packages:"
-          echo "$DRY_RUN" | jq -r '.tasks[].package'
+          echo "$AFFECTED_PACKAGES" | jq '.packages.items'
 
       - name: Check formatting
         run: pnpm format:check
 
       - name: Lint, check types and build
         if: steps.affected.outputs.count != '0'
-        run: pnpm turbo run lint --filter="...[origin/${{ github.base_ref }}]"
+        run: pnpm turbo check-types --affected
