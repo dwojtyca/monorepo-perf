@@ -22,16 +22,6 @@ jobs:
           filter: "blob:none"
           fetch-depth: 0
 
-      - name: Fetch origin/main
-        run: git fetch origin main:refs/remotes/origin/main
-
-      - name: Fetch origin/foo
-        run: git fetch origin foo:refs/remotes/origin/foo
-
-      - name: Fetch PR head (if available)
-        if: github.event_name == 'pull_request'
-        run: git fetch origin ${{ github.head_ref }}:refs/remotes/origin/${{ github.head_ref }}
-
       - name: Test git diff
         run: git diff origin/main...HEAD
 
